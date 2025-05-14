@@ -1,0 +1,23 @@
+name: Sync to SignSing Repository
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  sync:
+    if: github.repository == 'signal-singularity/lucky-docs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Push to SignSing repository
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.SSBOT_PAT }}
+          repository: SignSing/lucky-docs
+          branch: main
+          force: true 
