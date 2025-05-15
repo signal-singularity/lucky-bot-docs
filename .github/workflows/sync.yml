@@ -16,7 +16,7 @@ jobs:
       
       - name: Configure Git
         run: |
-          git config --global user.name "SignSing Bot"
+          git config --global user.name "SignSing"
           git config --global user.email "admin@sings.ee"
       
       - name: Push to SignSing repository
