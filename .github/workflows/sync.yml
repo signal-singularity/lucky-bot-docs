@@ -9,15 +9,17 @@ jobs:
     if: github.repository == 'signal-singularity/lucky-docs'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout source repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
+      - name: Configure Git
+        run: |
+          git config --global user.name "SignSing Bot"
+          git config --global user.email "admin@sings.ee"
+      
       - name: Push to SignSing repository
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.SSBOT_PAT }}
-          repository: SignSing/lucky-docs
-          branch: main
-          force: true 
+        run: |
+          git remote add target https://x-access-token:${{ secrets.SSBOT_PAT }}@github.com/SignSing/lucky-docs.git
+          git push target main:main --force
