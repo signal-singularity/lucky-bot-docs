@@ -1,0 +1,125 @@
+# 随机算法
+
+Lucky Bot 使用未来的 ETH 链上区块数据作为基础种子，以生成可复现的随机结果。当抽奖发生时，程序会获取相对于当前时间最新的区块，并从中提取相关的哈希数据。这些数据包括：
+
+- 区块 ID
+- 区块哈希
+- 矿工哈希
+- 区块时间戳
+
+由于区块链的去中心化特性，除非攻击者控制了整个 ETH 网络超过 51% 的算力，否则该种子保证是不可预测的，从而增强了抽奖结果的公平性。
+
+:::details 区块链特性
+区块生成是区块链网络中的核心过程。以以太坊（ETH）为例，区块由矿工通过工作量证明（PoW）机制打包生成。每当有新的交易广播到网络中，矿工会收集这些交易，并通过进行计算尝试找到一个满足特定条件的哈希值（即区块哈希）。这个过程消耗大量的计算能力，使其难以提前预测或篡改。
+
+每个区块包含前一个区块的哈希、当前区块的交易数据、时间戳、矿工地址等信息。因为每个区块都依赖于前一个区块的哈希，形成了一个链式结构，确保了区块链的不可篡改性和安全性。只有当矿工成功找到一个合格的哈希时，该区块才会被添加到链上并被网络中的所有节点认可。
+
+正因为区块生成过程的不可预测性和去中心化特性，区块链上的区块哈希及相关数据可以作为一种高度可信的随机性来源，广泛应用于抽奖和随机数生成等场景。
+:::
+
+## 算法实现与验证
+
+这是一个该算法的 Python 实现。其逻辑与原始版本基本相同，可以产生相同的结果，可用于验证结果是否被篡改。
+
+<a href="https://github.com/signal-singularity/lucky-random-generator" target="_blank">
+    <img src="/algorithm/lrg.avif" alt="LRG" style={{
+        margin: "0 auto",
+        width: "100%",
+        maxWidth: "500px",
+        marginTop: "1rem",
+        marginBottom: "1rem",
+        borderRadius: "5px"
+    }} />
+</a>
+
+程序需要 `区块 ID`、`区块哈希`、`矿工哈希` 和 `区块时间戳` 作为输入。这些数据可以在 MiniAPP 中或通过 [etherscan.io](https://etherscan.io) 的 API 找到。它看起来应该像这样：
+
+```json
+{
+    "number": "0x157acfe",
+    "hash": "0x8a826e6c3cbeacc82937ad7b6a821a6a25b63383bc05eb0ddb807bb41c518d34",
+    "miner": "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97",
+    "time": "0x682c4633",
+    "count": 1
+}
+```
+
+> `count` 实际上是一个操作数计数器。由于可能发生回滚，操作数的数量可能会超过获奖者的总数。此参数仅在 MiniAPP 中提供。
+
+### 验证抽奖结果
+
+上述 Python 实现包含一个 `main.py` 文件。请修改以下数据以复现抽奖结果：
+
+#### 区块数据 (L3 - L9)
+```py
+block = {
+    "number": "0x157acfe", # 区块号
+    "hash": "0x8a826e6c3cbeacc82937ad7b6a821a6a25b63383bc05eb0ddb807bb41c518d34", # 区块哈希
+    "miner": "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97", # 矿工地址
+    "time": "0x682c4633", # 区块时间戳
+    "count": 1 # 抽奖次数（仅 MiniAPP 内可见）
+}
+```
+
+#### 奖品数据 (L11 - L14)
+顺序必须与原始列表一致。
+
+格式：`["奖品名称", 数量]`
+
+```py
+prizes = [
+    ["P1",  3],
+    ["P2",  3],
+]
+```
+
+#### 参与者 (L16 - L19)
+顺序必须与 MiniAPP 中的参与者列表一致。请注意， MiniAPP 中的顺序实际上是参与事件的倒序时间列表，因此验证脚本会自动反转顺序；无需手动处理。
+```py
+members = [
+    "User1",
+    "User2",
+]
+```
+
+#### 运行计算
+
+- Linux / macOS: ```python3 main.py```
+- Windows: ```python main.py```
+
+```
+Winner: User2 - Prize: P2
+Winner: User1 - Prize: P2
+Total number: 2
+```
+
+### 算法实现
+
+1.  程序会将所有数据连接成一个字符串，并计算其 SHA256 哈希值，作为随机种子的基础。
+
+```py
+seed_input = block["number"] + block["hash"] + block["miner"] + block["time"]
+seed = hashlib.sha256(seed_input.encode()).hexdigest()
+```
+
+2.  程序遍历种子字符串的每个字符，执行位运算以生成一个 32 位整数作为初始随机值。
+
+```py
+hash_value = 0
+for char in seed:
+    hash_value = (hash_value << 5) - hash_value + ord(char)
+    hash_value &= 0xFFFFFFFF  # 模拟 32 位整数溢出
+```
+
+3.  使用一个简单的线性同余生成器 (LCG) 算法。每次调用 `get_random_int(max_value)` 时，它会根据当前的 `hash_value` 生成一个新的伪随机数，并对目标范围取模，以确保结果落在指定区间内。
+
+```py
+def get_random_int(max_value: int) -> int:
+    global hash_value
+    hash_value = (hash_value * 9301 + 49297) % 233280
+    return abs(hash_value) % max_value
+```
+
+4.  在每一轮抽奖中，首先随机选择一个奖品，然后随机选择一个成员，并记录中奖信息。如果某个奖品的数量达到 0 或某个成员已经中奖，则将他们从各自的列表中移除，然后继续下一轮，直到所有奖品或成员都被抽完。
+
+5.  由于整个过程的随机性完全依赖于链上区块数据，并且算法公开透明，任何人都可以使用相同的区块数据复现抽奖结果，确保了抽奖的公平性和不可篡改性。

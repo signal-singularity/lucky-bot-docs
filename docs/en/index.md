@@ -10,7 +10,7 @@ hero:
       text: Quick Start
       link: /guide/
     - theme: alt
-      text: Telegram
+      text: Telegram Bot
       link: https://t.me/ss_lucky_lottery_bot
   image:
     src: /icon.webp

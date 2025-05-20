@@ -33,4 +33,15 @@ export default defineConfig({
             description: 'Lucky Bot 文档',
         },
     ],
+    markdown: {
+        highlightLanguages: [
+            ['js', 'javascript'],
+            ['ts', 'typescript'],
+            ['py', 'python'],
+            ['bash', 'bash'],
+            ['json', 'json'],
+            ['md', 'markdown'],
+            ['mdx', 'tsx'],
+        ]
+    }
 });
